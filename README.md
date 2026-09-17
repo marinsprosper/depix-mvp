@@ -1,28 +1,47 @@
-# MVP DePix → USDT/USDC
+# DePix Pay — integração Eulen
 
-Protótipo seguro: cria ordens em memória e **não** chama a Eulen enquanto `EULEN_LIVE_ENABLED=false`.
+Aplicação Node/Express focada exclusivamente no fluxo Pix → DePix da Eulen.
 
-## Limites do MVP
+## O que está pronto
 
-- Primeira compra: até R$ 500,00.
-- Janela de validação: após a primeira compra, novas compras ficam bloqueadas por 24 horas.
-- Depois da validação: até R$ 6.000,00 por CPF a cada dia.
+- Client Credentials: login e renovação segura de token curto.
+- Criação de depósito Pix (`POST /deposit`) e exibição do Pix copia-e-cola.
+- Consulta de depósito (`GET /deposit-status`).
+- Webhook de depósito (`POST /webhooks/eulen/deposit`).
+- Registro de `id`, `X-Nonce` e `X-Request-ID` da Eulen.
+- Modo `sandbox` sem chamadas externas para testar a interface.
 
-## Executar
+## Configuração
 
 ```bash
 npm install
 cp .env.example .env
-set -a; . ./.env; set +a
 npm start
 ```
 
-Abra `http://localhost:3000`.
+Para teste real, configure no servidor (nunca no GitHub):
 
-## Onde inserir credenciais
+```env
+PROVIDER_MODE=live
+EULEN_CLIENT_ID=...
+EULEN_CLIENT_SECRET=...
+EULEN_WEBHOOK_SECRET=...
+ADMIN_TOKEN=...
+```
 
-No painel de variáveis de ambiente da Hostinger, crie `EULEN_CLIENT_ID` e `EULEN_CLIENT_SECRET`. Não envie segredos por chat e nunca ative `EULEN_LIVE_ENABLED=true` antes de implementar, revisar e registrar o webhook HTTPS.
+Crie as credenciais no bot da Eulen com escopo mínimo `deposit`. A Eulen recomenda Client Credentials para integrações novas. Configure no painel Eulen o webhook HTTPS:
 
-## Limites conhecidos
+`https://SEU-DOMINIO/webhooks/eulen/deposit`
 
-Esta versão não movimenta dinheiro, não persiste dados após reinício e não converte DePix para USDT/USDC. A API Eulen entrega DePix; a rota de liquidez e o envio de stablecoin ainda exigem validação operacional e jurídica antes de automação.
+## Endpoints
+
+- `GET /health`
+- `POST /api/payments` — recebe `amountInCents` e `depixAddress` opcional.
+- `GET /api/payments/:id`
+- `POST /webhooks/eulen/deposit`
+- `GET /api/admin/payments` — requer `x-admin-token`.
+- `POST /api/admin/eulen/ping` — requer `x-admin-token`.
+
+## Segurança operacional
+
+Eulen não possui idempotência em `POST /deposit`: após timeout ou erro de rede, não reenvie automaticamente. Guarde a operação, consulte o status e use webhooks como fonte principal. Esta base armazena pagamentos em memória; antes de produção, substitua por banco de dados e armazenamento seguro de refresh tokens.
